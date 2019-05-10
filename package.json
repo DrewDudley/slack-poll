@@ -1,0 +1,12 @@
+{
+  "name": "bhpoll",
+  "version": "1.0.0",
+  "description": "Slack Polling system to replace default Simple Poll",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "author": "Drew Dudley",
+  "dependencies": {
+    "tinyspeck": "^1.4.2"
+  }
+}
