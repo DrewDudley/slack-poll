@@ -2,51 +2,89 @@ const ts = require('tinyspeck');
 const port = process.env.PORT || 3000;
 const token = process.env.TOKEN;
 
-// setting defaults for all Slack API calls
 let slack = ts.instance({ token: token });
 
-// watch for slash command
+// watch for /bhpoll slash command
 slack.on('/bhpoll', payload => {
-  let parsedMessage = parseMessage(payload.text);
-  let message = formatMessage(parsedMessage);
-
-  slack.send(payload.response_url, message);
+    var parsedMessage = parseMessage(payload.text);
+    var message = formatMessage(parsedMessage);
+    slack.send(payload.response_url, message);
 });
-
-// Format message object for Slacks API
-function formatMessage(message) {
-  var poll = {};
-
-  if (message.options.length < 2) {
-    poll.response_type = "ephemeral";
-    poll.text = "You need at least 2 options for your poll";
-  } else if (message.options.length > 10) {
-    poll.response_type = "ephemeral";
-    poll.text = "Sorry, I can only support up to 10 options for your poll :disappointed:";
-  } else {
-    poll.text = '*' + message.title + '*';
-    poll.response_type = "in_channel";
-    poll.attachments = [{
-      text: '',
-      color: '#567dd0'
-    }];
-    emojiMap = [':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:', ':keycap_ten:'];
-  
-    message.options.forEach(function(option, i) {
-      poll.attachments[0].text += emojiMap[i] + '  ' + option + '\n\n';
-    });
-  }
-  return poll;
-}
 
 // Parse raw message string separated by quotes
 function parseMessage(message) {
-  var parsedMessage = {};
-  var messageParts = message.replace(/(^"|"$)/g, '').split('" "');
-  parsedMessage.title = messageParts[0];
-  parsedMessage.options = messageParts.slice(1);
-  return parsedMessage;
+    var parsedMessage = {};
+    var messageParts = message.replace(/(^"|"$)/g, '').split('" "');
+    parsedMessage.title = messageParts[0];
+    parsedMessage.options = messageParts.slice(1);
+    return parsedMessage;
 }
+
+// Format message object for Slacks API
+function formatMessage(message, vote) {
+    var formattedMessage = {};
+    if (message.title.toLowerCase() === 'hoedown') {
+        formattedMessage.response_type = 'in_channel';
+        formattedMessage.text = ':boot: _Pop it, lock it, polka dot it_ :boot: \n https://www.youtube.com/watch?v=vxpDgVbF4Wg';
+    } else if (message.options.length < 2) {
+        formattedMessage.text = 'You need at least 2 options for your poll';
+        formattedMessage.response_type = 'ephemeral';
+    } else if (message.options.length > 10) {
+        formattedMessage.text = 'Sorry, I can only support up to 10 options for your poll :disappointed:';
+        formattedMessage.response_type = 'ephemeral';
+    } else {
+        formattedMessage.text = '*' + message.title + '*';
+        formattedMessage.response_type = 'in_channel';
+        formattedMessage.attachments = [];
+        var buttons = [];
+        emojiMap = [':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:', ':keycap_ten:'];
+
+        message.options.forEach(function(option, i) {
+            formattedMessage.attachments.push({ text: emojiMap[i] + '  ' + option, fallback: 0 });
+            buttons.push({
+                name: emojiMap[i],
+                text: emojiMap[i],
+                type: 'button',
+                value: emojiMap[i],
+            });
+        });
+        formattedMessage.attachments.push({
+            text: '',
+            actions: buttons,
+            callback_id: 'user_voted'
+        });
+        if (buttons.length > 5) {
+            formattedMessage.attachments.push({
+                text: '',
+                actions: buttons.splice(5),
+                callback_id: 'user_voted'
+            });
+        }
+    }
+    return formattedMessage;
+}
+
+// Receive payload from vote button and updates message
+slack.on('/slack/vote', payload => {
+    var reqBody = payload.body;
+    var originalMessage = reqBody.original_message;
+    var thankYouMessage = {
+        text: ':medal: Thanks for doing your part, citizen',
+        response_type: 'ephemeral',
+        replace_original: false
+    }
+    originalMessage.attachments.filter((opt) => {
+        if (opt.text && opt.text.includes(reqBody.actions[0].value)) {
+            if (!opt.text.includes(reqBody.user.name)) {
+                opt.fallback = parseInt(opt.fallback);
+                opt.fallback += 1;
+                opt.text += '  `' + opt.fallback + '`\n' + reqBody.user.name + ', ';
+            }
+        }
+    });
+    slack.send(reqBody.response_url, originalMessage);
+    slack.send(reqBody.response_url, thankYouMessage);
+});
 
 // incoming http requests
 slack.listen(port);
