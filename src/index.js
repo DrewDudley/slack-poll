@@ -21,7 +21,7 @@ function parseMessage(message) {
 }
 
 // Format message object for Slacks API
-function formatMessage(message, vote) {
+function formatMessage(message) {
     var formattedMessage = {};
     if (message.title.toLowerCase() === 'hoedown') {
         formattedMessage.response_type = 'in_channel';
@@ -40,7 +40,7 @@ function formatMessage(message, vote) {
         emojiMap = [':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:', ':keycap_ten:'];
 
         message.options.forEach(function(option, i) {
-            formattedMessage.attachments.push({ text: emojiMap[i] + '  ' + option, fallback: 0 });
+            formattedMessage.attachments.push({ text: emojiMap[i] + '  ' + option, fallback: ' ' });
             buttons.push({
                 name: emojiMap[i],
                 text: emojiMap[i],
@@ -67,23 +67,19 @@ function formatMessage(message, vote) {
 // Receive payload from vote button and updates message
 slack.on('/slack/vote', payload => {
     var reqBody = payload.body;
-    var originalMessage = reqBody.original_message;
-    var thankYouMessage = {
-        text: ':medal: Thanks for doing your part, citizen',
-        response_type: 'ephemeral',
-        replace_original: false
-    }
-    originalMessage.attachments.filter((opt) => {
+    var updatedMessage = reqBody.original_message;
+
+    updatedMessage.attachments.filter((opt) => {
         if (opt.text && opt.text.includes(reqBody.actions[0].value)) {
-            if (!opt.text.includes(reqBody.user.name)) {
-                opt.fallback = parseInt(opt.fallback);
-                opt.fallback += 1;
-                opt.text += '  `' + opt.fallback + '`\n' + reqBody.user.name + ', ';
+            var originalText = opt.text.split('  `');
+            if (!opt.fallback.includes(reqBody.user.name)) {
+                opt.fallback += reqBody.user.name + ', ';
+                var votes = opt.fallback.split(',');
+                opt.text = originalText[0] + '  `' + (votes.length - 1) + '`\n' + votes;
             }
         }
     });
-    slack.send(reqBody.response_url, originalMessage);
-    slack.send(reqBody.response_url, thankYouMessage);
+    slack.send(reqBody.response_url, updatedMessage);
 });
 
 // incoming http requests
