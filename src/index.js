@@ -23,10 +23,7 @@ function parseMessage(message) {
 // Format message object for Slacks API
 function formatMessage(message) {
     var formattedMessage = {};
-    if (message.title.toLowerCase() === 'hoedown') {
-        formattedMessage.response_type = 'in_channel';
-        formattedMessage.text = ':boot: _Pop it, lock it, polka dot it_ :boot: \n https://www.youtube.com/watch?v=vxpDgVbF4Wg';
-    } else if (message.options.length < 2) {
+    if (message.options.length < 2) {
         formattedMessage.text = 'You need at least 2 options for your poll';
         formattedMessage.response_type = 'ephemeral';
     } else if (message.options.length > 10) {
@@ -71,11 +68,11 @@ slack.on('/slack/vote', payload => {
 
     updatedMessage.attachments.filter((opt) => {
         if (opt.text && opt.text.includes(reqBody.actions[0].value)) {
-            var originalText = opt.text.split('  `');
-            if (!opt.fallback.includes(reqBody.user.name)) {
-                opt.fallback += reqBody.user.name + ', ';
-                var votes = opt.fallback.split(',');
-                opt.text = originalText[0] + '  `' + (votes.length - 1) + '`\n' + votes;
+            var originalText = opt.text.split('   `');
+            if (!opt.fallback.includes(`<@${reqBody.user.id}>`)) {
+                opt.fallback += `<@${reqBody.user.id}>, `;
+                var votes = opt.fallback.split(',').slice(0, -1);
+                opt.text = originalText[0] + '   `' + votes.length + '`\n' + votes;
             }
         }
     });
