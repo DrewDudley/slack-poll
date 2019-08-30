@@ -57,25 +57,58 @@ function formatMessage(message) {
                 callback_id: 'user_voted'
             });
         }
+        formattedMessage.attachments.push({
+            text: '',
+            actions: [{
+                name: 'delete',
+                text: 'Delete',
+                type: 'button',
+                value: 'delete',
+                style: 'danger',
+                confirm: {
+                    title: 'Are you sure?',
+                    text: 'All votes will be lost forever :cold_sweat:',
+                    ok_text: 'Yes',
+                    dismiss_text: 'No',
+                }
+            }],
+            callback_id: 'user_deleted'
+        });
     }
     return formattedMessage;
 }
 
-// Receive payload from vote button and updates message
-slack.on('/slack/vote', payload => {
-    var reqBody = payload.body;
-    var updatedMessage = reqBody.original_message;
-
-    updatedMessage.attachments.filter((opt) => {
-        if (opt.text && opt.text.includes(reqBody.actions[0].value)) {
-            var originalText = opt.text.split('   `');
-            if (!opt.fallback.includes(`<@${reqBody.user.id}>`)) {
-                opt.fallback += `<@${reqBody.user.id}>, `;
-                var votes = opt.fallback.split(',').slice(0, -1);
-                opt.text = originalText[0] + '   `' + votes.length + '`\n' + votes;
+// Receive payload from vote button and update message
+slack.on('/slack/vote', (req, res) => {
+    res.end();
+    var reqBody = req.body;
+    var updatedMessage;
+    if (reqBody.actions[0].value === 'delete') {
+        updatedMessage = {
+            text: 'This poll has been deleted :wastebasket:',
+        };
+    } else {
+        updatedMessage = reqBody.original_message;
+        updatedMessage.attachments.filter((opt) => {
+            if (opt.text && opt.text.includes(reqBody.actions[0].value)) {
+                var originalText = opt.text.split('   `');
+                if (!opt.fallback.includes(`<@${reqBody.user.id}>`)) {
+                    opt.fallback += `<@${reqBody.user.id}>, `;
+                    var votes = opt.fallback.trim().split(',').slice(0, -1);
+                    opt.text = originalText[0] + '   `' + votes.length + '`\n' + votes;
+                } else {
+                    var newFallback = opt.fallback.replace(`<@${reqBody.user.id}>,`, '');
+                    opt.fallback = newFallback;
+                    if (opt.fallback.trim().length === 0) {
+                        opt.text = originalText[0];
+                    } else {
+                        var votes = opt.fallback.trim().split(',').slice(0, -1);
+                        opt.text = originalText[0] + '   `' + votes.length + '`\n' + votes;
+                    }
+                }
             }
-        }
-    });
+        });
+    }
     slack.send(reqBody.response_url, updatedMessage);
 });
 
