@@ -7,8 +7,8 @@ let slack = ts.instance({ token: token });
 // watch for /bhpoll slash command
 slack.on('/bhpoll', payload => {
     var parsedMessage = parseMessage(payload.text);
-    var message = formatMessage(parsedMessage);
-    slack.send(payload.response_url, message);
+    var formattedMessage = formatMessage(parsedMessage);
+    slack.send(payload.response_url, formattedMessage);
 });
 
 // Parse raw message string separated by quotes
@@ -24,20 +24,20 @@ function parseMessage(message) {
 function formatMessage(message) {
     var formattedMessage = {};
     if (message.options.length < 2) {
+        formattedMessage.response_type = 'ephemeral';
         formattedMessage.text = 'You need at least 2 options for your poll';
-        formattedMessage.response_type = 'ephemeral';
     } else if (message.options.length > 10) {
-        formattedMessage.text = 'Sorry, I can only support up to 10 options for your poll :disappointed:';
         formattedMessage.response_type = 'ephemeral';
+        formattedMessage.text = 'Sorry, I can only support up to 10 options for your poll :disappointed:';
     } else {
-        formattedMessage.text = '*' + message.title + '*';
+        formattedMessage.text = `*${message.title}*`;
         formattedMessage.response_type = 'in_channel';
         formattedMessage.attachments = [];
         var buttons = [];
         emojiMap = [':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:', ':keycap_ten:'];
 
         message.options.forEach(function(option, i) {
-            formattedMessage.attachments.push({ text: emojiMap[i] + '  ' + option, fallback: ' ' });
+            formattedMessage.attachments.push({ text: `${emojiMap[i]}  ${option}`, fallback: ' ' });
             buttons.push({
                 name: emojiMap[i],
                 text: emojiMap[i],
@@ -85,7 +85,7 @@ slack.on('/slack/vote', (req, res) => {
     var updatedMessage;
     if (reqBody.actions[0].value === 'delete') {
         updatedMessage = {
-            text: 'This poll has been deleted :wastebasket:',
+            text: `:wastebasket: This poll was deleted by <@${reqBody.user.id}>`,
         };
     } else {
         updatedMessage = reqBody.original_message;
@@ -97,8 +97,8 @@ slack.on('/slack/vote', (req, res) => {
                     var votes = opt.fallback.trim().split(',').slice(0, -1);
                     opt.text = originalText[0] + '   `' + votes.length + '`\n' + votes;
                 } else {
-                    var newFallback = opt.fallback.replace(`<@${reqBody.user.id}>,`, '');
-                    opt.fallback = newFallback;
+                    var updatedFallback = opt.fallback.replace(`<@${reqBody.user.id}>, `, '');
+                    opt.fallback = updatedFallback;
                     if (opt.fallback.trim().length === 0) {
                         opt.text = originalText[0];
                     } else {
