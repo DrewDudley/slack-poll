@@ -14,7 +14,7 @@ slack.on('/bhpoll', payload => {
 // Parse raw message string separated by quotes
 function parseMessage(message) {
     var parsedMessage = {};
-    var messageParts = message.slice(1,-1).split(/"\W+"/);
+    var messageParts = message.slice(1,-1).replace(/[\u201C\u201D]/g, '"').split(/"\W+"/);
     parsedMessage.title = messageParts[0];
     parsedMessage.options = messageParts.slice(1);
     return parsedMessage;
