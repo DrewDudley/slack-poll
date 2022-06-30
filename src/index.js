@@ -4,8 +4,8 @@ const token = process.env.TOKEN;
 
 let slack = ts.instance({ token: token });
 
-// watch for /bhpoll slash command
-slack.on('/bhpoll', payload => {
+// watch for /ezpoll slash command
+slack.on('/ezpoll', payload => {
     var parsedMessage = parseMessage(payload.text);
     var formattedMessage = formatMessage(parsedMessage);
     slack.send(payload.response_url, formattedMessage);
